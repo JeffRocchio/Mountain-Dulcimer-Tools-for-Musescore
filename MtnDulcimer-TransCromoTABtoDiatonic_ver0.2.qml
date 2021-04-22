@@ -24,10 +24,11 @@
 //=============================================================================
 
 import QtQuick 2.0
+import QtQuick.Dialogs 1.1
 import MuseScore 3.0
 
 MuseScore {
-      version:  "0.1" //<-- Still a work in process!!
+      version:  "0.2" //<-- Still a work in process!!
       description: "Modifies existing Mountain Dulcimer chromatic TAB to diatonic fret numbering"
 	  menuPath: "Plugins.Mtn Dulcimer.Chromo TAB 2 Diatonic"
 	  
@@ -61,7 +62,9 @@ MuseScore {
 		  //	7:
 		  "An error occurred trying to create tied note.",
 		  //	8:
-		  "ERROR: Infinite Loop in makeTAB()"
+		  "ERROR: Infinite Loop in makeTAB()",
+		  //	9:
+		  "**** ERROR: fret number too low in transformNote() - Not a User Error, Please Report This ****"
 		  ]
 		  
 		  function getError() { return bError; }
@@ -111,7 +114,23 @@ MuseScore {
 		  
 	  } // end QtObject oDebug
 
-
+	  QtObject {
+		  id: oTabStaff
+		  
+		  //PURPOSE:
+		  //	Keeps parameters and methods for the actual TAB staff
+		  //we are operating on.
+		  
+		  property int iNumOfStrings: 3
+		  
+		  // ============================================ See CD-02 >
+		  readonly property var sHalfFretSymbol: "+"
+		  readonly property var nHalfFretXPosition: 1.3; 
+		  readonly property var nHalfFretYPositions: [3.10, 1.55, 0.10] 
+		  
+	} // end QtObject oTabStaff
+	  
+	  
 	function assessValidity(oCursor) {
 		//   PURPOSE: Prior to attempting any transformation, see 
 		//if it appears that the user has actually specified a
@@ -229,7 +248,8 @@ MuseScore {
 		];
 		function findTPCidx(tpc) {
 			var bDEBUG = true;
-			//bDEBUG = false;
+			bDEBUG = false;
+			
 			if(bDEBUG) oDebug.fnEntry(findTPCidx.name);
 			
 			if (bDEBUG) console.log(" ");
@@ -269,23 +289,20 @@ MuseScore {
 			return tpcPerPitch[tpcIdx.idx][tpcIdx.column];
 		}
 		
-		var iPitch = oNote.pitch;
-		var iString = oNote.string;
 		var iChromoFret = oNote.fret;
-		
 		if (iChromoFret >= 0) {
 			if (bDEBUG) console.log(" ");
-			console.log("---- Input Note: pitch <", iPitch, "> string <", iString, "> chromoFret <", iChromoFret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
-			oNote.string = iString; // In reality this should never change.
+			console.log("---- Input Note: pitch <", oNote.pitch, "> string <", oNote.String, "> chromoFret <", iChromoFret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
+			oNote.string = oNote.string; // In reality this should never change.
 			oNote.fret = iChromoFret - MntDiatonics[iChromoFret].offset;
-			oNote.pitch = iPitch - MntDiatonics[iChromoFret].offset;
+			oNote.pitch = oNote.pitch - MntDiatonics[iChromoFret].offset;
 			oNote.tpc1 = wrapTpcWithOffset(oNote.tpc1, MntDiatonics[iChromoFret].offset);
 			oNote.tpc2 = wrapTpcWithOffset(oNote.tpc2, MntDiatonics[iChromoFret].offset);
 			console.log("\n---- New Values: pitch <", oNote.pitch, "> string <", oNote.string, "> diaFret <", oNote.fret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
 			oNote.play = false; // Turn note 'Play' off (since it's pitch is now really a fake-out).
 			if (MntDiatonics[iChromoFret].halfFret) { // If true, we need to add the 1/2 fret text symbol.
-				console.log("---- ---- need to add 1/2 fret text");
-				oNote.color = "#aa0000"; // at least for now highlight note needing a + symbol.
+				console.log("---- ---- need to add 1/2 fret text | Note's String# <", oNote.string, ">");
+				//oNote.color = "#aa0000";
 				var half = newElement(Element.STAFF_TEXT);
 				oCursor.add(half);
 				half.fontSize = 12;
@@ -293,15 +310,13 @@ MuseScore {
 				half.text = "+";
 				half.autoplace = false;
 				half.placement = Placement.ABOVE;
-				half.offsetY = 2;
-				half.offsetX = 2;
-				
-				//TODO Add code for adding the 1/2 fret text symbol here.
+				half.offsetX = oTabStaff.nHalfFretXPosition;
+				half.offsetY = oTabStaff.nHalfFretYPositions[oNote.string];
 			}
 		}
 		else {
-			// TODO Replace this with a proper error handler.
 			console.log("**** ERROR: fret number too low ****");
+			oUserMessage.setError(9);
 		}
 		
 		if(bDEBUG) oDebug.fnExit(transformNote.name);
@@ -372,13 +387,19 @@ MuseScore {
 		oCursor.rewind(Cursor.SELECTION_START);
 
 		curScore.startCmd(); // <--** We set this to mark an 'undo' point for user.
+		var iWatchDog = 2000;
 		while (oCursor.segment && oCursor.tick < endTick) {
 			if (oCursor.element.type === Element.CHORD) {
 				oChord = oCursor.element;
 				transformChord(oChord, oCursor); // Note that this funct does not advance cursor.
-				oCursor.next();
 			}
-		}
+			oCursor.next();
+			iWatchDog--;
+			if (iWatchDog<=0) {
+				console.log("**** ERROR: WatchDog Exceeded, Infinte Loop ****");
+				break;
+			}
+		} // Bottom of while loop
 		curScore.endCmd(); // <--** Marks the end of the 'undo' point.
 
 		if(bDEBUG) oDebug.fnExit(transformTAB.name);
@@ -403,5 +424,23 @@ MuseScore {
 		
 	} //END OnRun
 
+	
+	
+	//==== PLUGIN USER INTERFACE OBJECTS ===========================================
+	
+	MessageDialog {
+		id: errorDialog
+		visible: false
+		title: qsTr("Error")
+		text: "Error"
+		onAccepted: {
+			Qt.quit()
+		}
+		function openErrorDialog(message) {
+			text = message
+			open()
+		}
+	}
+	
 
 } // END Musescore
