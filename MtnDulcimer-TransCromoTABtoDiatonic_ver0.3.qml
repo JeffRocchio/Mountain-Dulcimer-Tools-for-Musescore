@@ -28,7 +28,7 @@ import QtQuick.Dialogs 1.1
 import MuseScore 3.0
 
 MuseScore {
-      version:  "0.2" //<-- Still a work in process!!
+      version:  "0.3" //<-- Still a work in process!!
       description: "Modifies existing Mountain Dulcimer chromatic TAB to diatonic fret numbering"
 	  menuPath: "Plugins.Mtn Dulcimer.Chromo TAB 2 Diatonic"
 	  
@@ -55,8 +55,7 @@ MuseScore {
 		  //	4:
 		  "Unrecognized element on SMN staff. Don't know how to handle it.",
 		  //	5:
-		  "Selection appears to be invalid. Please clear your selection and try again. 
-		  Be sure to select whole measures, do not start with part of a measure.",
+		  "Selection appears to be invalid. Please clear your selection and try again. Be sure to select whole measures, do not start with part of a measure. Also, please makre sure your selection does not span multiple staves.",
 		  //	6:
 		  "Cannot find a valid TAB staff immediately below your selected range.",
 		  //	7:
@@ -112,7 +111,23 @@ MuseScore {
 			  console.log("======== | ", fnName, "() RETURNing to caller ||\n");
 		  }
 		  
-	  } // end QtObject oDebug
+		  function showObject(oObject) {
+			  //	PURPOSE: Lists all key -> value pairs of the passed-in
+			  //object to the console.
+			  
+			  if (Object.keys(oObject).length >0) {
+				  Object.keys(oObject)
+				  .filter(function(key) {
+					  return oObject[key] != null;
+				  })
+				  .sort()
+				  .forEach(function eachKey(key) {
+					  console.log("---- ---- ", key, " : <", oObject[key], ">");
+				  });
+			  }
+		  }
+		  
+	} // end QtObject oDebug
 
 	  QtObject {
 		  id: oTabStaff
@@ -129,8 +144,8 @@ MuseScore {
 		  readonly property var nHalfFretYPositions: [3.10, 1.55, 0.10] 
 		  
 	} // end QtObject oTabStaff
-	  
-	  
+
+	
 	function assessValidity(oCursor) {
 		//   PURPOSE: Prior to attempting any transformation, see 
 		//if it appears that the user has actually specified a
@@ -151,25 +166,36 @@ MuseScore {
 		
 		if(bDEBUG) oDebug.fnEntry(assessValidity.name);
 		
-		var valid = 0; // We'll start with a presumption that user selection is valid.
+					// We'll start with a presumption that user selection is valid.
+		var bValid = true; 
 		
-		oCursor.rewind(Cursor.SELECTION_START);
-		if (!oCursor.segment) { // no selection?
-			valid = 1; // Return error message text string #1.
+		if ((curScore.selection.elements.length==0) || (!curScore.selection.isRange)) {
+			oUserMessage.setError(1); //<- No selection.
+			bValid = false;
+		}
+					//There is a selection, check if it spans more than one stave
+		if(bValid) {
+			if ((curScore.selection.endStaff-curScore.selection.startStaff) > 1) {
+				oUserMessage.setError(5); //<- More than one stave in selection range.
+				bValid = false;
+			}
 		}
 		
-		//   There is a selection, so now check if this is a TAB staff?
-		//TODO
-		
-		//   There is a selection, and it is a TAB staff, so now is this
-		//a 'Linked' staff?
-		//TODO
+					//Selection looks valid, now check if this is a TAB staff.
+					// ============================================ See CD-04 >
+		if(bValid) {
+					//Rewind puts cursor on staff containing the selection range.
+			oCursor.rewind(Cursor.SELECTION_START);
+			if(!oCursor.element.staff.part.hasTabStaff) {
+				oUserMessage.setError(2);
+				bValid = false;
+			}
+		}
 		
 		if(bDEBUG) oDebug.fnExit(assessValidity.name);
 		
-		return valid;
+		return bValid;
 	} // end assessValidity()
-	
 	
 	function transformNote(oNote, oCursor) {
 		//    PURPOSE: Takes a chromatic TAB note object and translates it to 
@@ -180,7 +206,7 @@ MuseScore {
 		//fret number.
 		
 		var bDEBUG = true;
-		//bDEBUG = false;
+		bDEBUG = false;
 		
 		if(bDEBUG) oDebug.fnEntry(transformNote.name);
 		
@@ -231,7 +257,7 @@ MuseScore {
 		];
 		
 
-		// ============================================ See CD-02 >
+		// ============================================ See CD-03 >
 		var tpcPerPitch = [
 			[ 26, 14,  2 ], //B# , C , Dbb
 			[ 33, 21,  9 ], //B##, C# , Db
@@ -247,6 +273,8 @@ MuseScore {
 			[ 31, 19,  7 ]  //A##, B , Cb
 		];
 		function findTPCidx(tpc) {
+			// ============================================ See CD-03 >
+			
 			var bDEBUG = true;
 			bDEBUG = false;
 			
@@ -269,8 +297,10 @@ MuseScore {
 		if(bDEBUG) oDebug.fnExit(findTPCidx.name);
 		}
 		function wrapTpcWithOffset(tpc, offset) {
+			// ============================================ See CD-03 >
+			
 			var bDEBUG = true;
-			//bDEBUG = false;
+			bDEBUG = false;
 			if(bDEBUG) oDebug.fnEntry(wrapTpcWithOffset.name);
 
 			var tpcIdx = findTPCidx(tpc);
@@ -291,17 +321,17 @@ MuseScore {
 		
 		var iChromoFret = oNote.fret;
 		if (iChromoFret >= 0) {
-			if (bDEBUG) console.log(" ");
-			console.log("---- Input Note: pitch <", oNote.pitch, "> string <", oNote.String, "> chromoFret <", iChromoFret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
+			if(bDEBUG) console.log(" ");
+			if(bDEBUG) console.log("---- Input Note: pitch <", oNote.pitch, "> string <", oNote.String, "> chromoFret <", iChromoFret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
 			oNote.string = oNote.string; // In reality this should never change.
 			oNote.fret = iChromoFret - MntDiatonics[iChromoFret].offset;
 			oNote.pitch = oNote.pitch - MntDiatonics[iChromoFret].offset;
 			oNote.tpc1 = wrapTpcWithOffset(oNote.tpc1, MntDiatonics[iChromoFret].offset);
 			oNote.tpc2 = wrapTpcWithOffset(oNote.tpc2, MntDiatonics[iChromoFret].offset);
-			console.log("\n---- New Values: pitch <", oNote.pitch, "> string <", oNote.string, "> diaFret <", oNote.fret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
+			if(bDEBUG) console.log("\n---- New Values: pitch <", oNote.pitch, "> string <", oNote.string, "> diaFret <", oNote.fret, "> | tpc <", oNote.tpc, "> tpc1 <", oNote.tpc1, "> tpc2 <", oNote.tpc2, ">");
 			oNote.play = false; // Turn note 'Play' off (since it's pitch is now really a fake-out).
 			if (MntDiatonics[iChromoFret].halfFret) { // If true, we need to add the 1/2 fret text symbol.
-				console.log("---- ---- need to add 1/2 fret text | Note's String# <", oNote.string, ">");
+				if(bDEBUG) console.log("---- ---- need to add 1/2 fret text | Note's String# <", oNote.string, ">");
 				//oNote.color = "#aa0000";
 				var half = newElement(Element.STAFF_TEXT);
 				oCursor.add(half);
@@ -334,7 +364,7 @@ MuseScore {
 		
 		
 		var bDEBUG = true;
-		//bDEBUG = false;
+		bDEBUG = false;
 		
 		if(bDEBUG) oDebug.fnEntry(transformChord.name);
 		
@@ -342,10 +372,10 @@ MuseScore {
 		var oNotesArray;
 		var iNumOfNotes;
 		
-		// oNotesArray = oCursor.element.notes;
+					// oNotesArray = oCursor.element.notes;
 		oNotesArray = oChord.notes;
 		iNumOfNotes = oNotesArray.length;
-		console.log("# Notes in Chord:", iNumOfNotes);
+		if(bDEBUG) console.log("# Notes in Chord:", iNumOfNotes);
 		for (var i=0; i<iNumOfNotes; i++) {
 			transformNote(oNotesArray[i], oCursor);
 		}
@@ -361,7 +391,7 @@ MuseScore {
 					//   ASSUMES: We have successfully passed the assessValidity() tests.
 
 		var bDEBUG = true;
-		//bDEBUG = false;
+		bDEBUG = false;
 		
 		if(bDEBUG) oDebug.fnEntry(transformTAB.name);
 		
@@ -408,6 +438,8 @@ MuseScore {
 	  
 
 	onRun: {
+		console.log("********** RUNNING **********");
+		
 		var staffError = 0; // This is used to get the return value from assessValidity().
 		var oCursor = curScore.newCursor()
 
@@ -420,6 +452,7 @@ MuseScore {
 			transformTAB(oCursor);
 		}
 		
+		console.log("********** QUITTING **********");
 		Qt.quit();
 		
 	} //END OnRun
