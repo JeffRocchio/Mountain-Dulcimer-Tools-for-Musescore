@@ -1,11 +1,17 @@
-# MtnDulcimer-CromoTABtoDiatonic
-A Musescore plugin that converts an existing chromatic TAB staff to Mountain Dulcimer diatonic TAB notation
+# Plugin - MtnDulcimer-CromoTABtoDiatonic
+A Musescore plugin that converts an existing chromatic TAB staff to Mountain Dulcimer 'half-fret,' semi-diatonic, TAB notation
 
 5/9/2021: First release.
 
-To Install: Copy the .qml file into your musesdcore 'plugins' directory, then in Musescore enable it in the Plugins menu.
+## TO INSTALL --
 
-##TO USE --
+   1. Copy the `MtnDulcimer-CromoTABtoDiatonic.qml` file into your musescore 'plugins' directory.
+   1. In Musescore enable it in the Plugins menu:
+      1. Click on Plugins / Plugin Manager...
+      1. Click the checkbox for MtnDulcimer_CromoTABtoDiatonic. Then click OK button. (If you don't see the plugin, click on the 'Reload Plugins' button.)
+      1. Then click OK button.
+
+## TO USE --
 
    1. Have a TAB staff in your score that contains the fully chromatic representation of the score. You will presumbably create this TAB staff using the *Mountain Dulcimer (Tablature)* instrument. **CAUTION**: Make sure this staff is *not* linked to any other staff. If it is linked and you run the plugin against it, it will effectively destroy that other linked staff's content. If the notes you wish to make mtn dulcimer TAB for are on a standard notation staff you can copy/paste from the standard notation staff to the dulcimer TAB staff to obtain the chromatic TAB staff against which you then run the plugin. This procedure is a good way to go as it will preserve all the articulations, such as slurs, etc.
    
@@ -15,16 +21,16 @@ To Install: Copy the .qml file into your musesdcore 'plugins' directory, then in
    
    4. Run the plugin from Musescore's plugin menu. You will get a confirming popup box when the plugin completes. If an error occurs a popup will inform you of that. NOTE: I have noticed that occasionally portions of the transformed TAB will not appear to have been transformed until after the score's window gets refreshed. I don't know why, and it may be due to my particular Linux PC's configuration. But if this happens just click on a different score's tab, move the window around, and/or save the file and it should update and all be correct.
    
-##LIMITATIONS --
+## LIMITATIONS --
 
-   1. This is a first release, so bugs wouldn't be all that surprising.
+   1. **First Release**. This is a first release, so bugs wouldn't be all that surprising.
    
-   1. Multiple voices are not supported. At present it only converts voice-1.
+   1. **Multiple Voices**. Multiple voices are not supported. At present it only converts voice-1.
    
-   1. Grace notes are not supported in this release.
+   1. **Grace Notes**. Grace notes are not supported in this release.
    
-   1. The mountain dulcimer half-fret symbols, those "+" symbols, may need fixing up, depending upon your TAB staff's style settings - such as the fret number font size and such. Musescore, of course, cannot have a non-integer fret #, so the half-frets are added to the fret-number as 'fingering' text. Fingering text is associated to specific notes/frets, so they generally will stay in their proper relative position as you reformat. But reformating from, say, 8pt fret numbers to 14pt may make you want to tweak the half-fret positioning. You could do this in a batch process by updating the *Styles | Text | Fingering style*. Or you could select one of the + symbols and use the *Select | All Simular Elements in Same Staff* option and then using the Inspector to adjust the X/Y offset values.
+   1. **Half-Fret Symbols**. The mountain dulcimer half-fret symbols, those "+" symbols, may need fixing up, depending upon your TAB staff's style settings - such as the fret number font size and such. Musescore, of course, cannot have a non-integer fret #, so the half-frets are added to the fret-number as 'fingering' text. Fingering text is associated to specific notes/frets, so they generally will stay in their proper relative position as you reformat. But reformating from, say, 8pt fret numbers to 14pt may make you want to tweak the half-fret positioning. You could do this in a batch process by updating the *Styles | Text | Fingering style*. Or you could select one of the + symbols and use the *Select | All Simular Elements in Same Staff* option and then using the Inspector to adjust the X/Y offset values.
    
-##ISSUES
+## ISSUES
 
 As you find bugs and issues, please go ahead and open an issue item here on github.
